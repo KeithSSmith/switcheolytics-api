@@ -11,5 +11,11 @@
     "MONGODB_DB": "@mongodb-database",
     "NEO_RPC_HOSTNAME": "@neo-rpc-hostname",
     "NEO_RPC_PORT": "@neo-rpc-port"
+  },
+  "scale": {
+    "sfo1": {
+      "min": 1,
+      "max": "auto"
+    }
   }
 }
