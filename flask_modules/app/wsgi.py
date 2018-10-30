@@ -39,6 +39,29 @@ ssc = SwitcheoSmartContract(rpc_hostname=rpc_hostname,
                             mongodb_port=mongodb_port,
                             mongodb_db=mongodb_db)
 
+
+def sort_dicts(collection, key_name, sort_key, exclude_keys=[]):
+    collection_dict = {}
+    collection_rows = ssc.ni.mongo_db[collection].find({key_name: {'$ne': None}})
+
+    for row in collection_rows:
+        for asset in row[key_name].keys():
+            if asset in exclude_keys:
+                continue
+            asset_dict = {
+                'address': row['_id'],
+                sort_key: row[key_name][asset]
+            }
+            if asset not in collection_dict:
+                collection_dict[asset] = []
+            collection_dict[asset].append(asset_dict)
+
+    for asset in collection_dict.keys():
+        collection_dict[asset] = sorted(collection_dict[asset], key=lambda coin: coin[sort_key], reverse=True)
+
+    return collection_dict
+
+
 @app.errorhandler(404)
 @cross_origin()
 def not_found(error):
@@ -274,10 +297,125 @@ def get_switcheo_fee_amount_graph():
         fees_dict[fee_asset['_id']['fee_asset_name']].append(fee_asset_dict)
 
     for key in fees_dict.keys():
-        if key is not None:
-            fees_dict[key].sort(key=lambda coin: coin['block_date'])
+        fees_dict[key] = sorted(fees_dict[key], key=lambda coin: coin['block_date'])
+        # if key is not None:
+        #     fees_dict[key].sort(key=lambda coin: coin['block_date'])
 
     return str(json.dumps(fees_dict))
+
+
+@app.route('/switcheo/addresses/fees')
+@cross_origin()
+def switcheo_addresses_fees():
+    return get_switcheo_addresses_fees()
+
+
+def get_switcheo_addresses_fees():
+    return str(json.dumps(sort_dicts(collection='addresses',
+                                     key_name='fees_paid',
+                                     sort_key='fee_amount')))
+
+
+@app.route('/switcheo/addresses/takes')
+@cross_origin()
+def switcheo_addresses_takes():
+    return get_switcheo_addresses_takes()
+
+
+def get_switcheo_addresses_takes():
+    return str(json.dumps(sort_dicts(collection='addresses',
+                                     key_name='takes',
+                                     sort_key='trades',
+                                     exclude_keys=['wants', 'offers'])))
+
+
+@app.route('/switcheo/addresses/makes')
+@cross_origin()
+def switcheo_addresses_makes():
+    return get_switcheo_addresses_makes()
+
+
+def get_switcheo_addresses_makes():
+    return str(json.dumps(sort_dicts(collection='addresses',
+                                     key_name='makes',
+                                     sort_key='trades',
+                                     exclude_keys=['wants', 'offers'])))
+
+@app.route('/switcheo/addresses/trades/count')
+@cross_origin()
+def switcheo_addresses_trades_count():
+    return get_switcheo_addresses_trades_count()
+
+
+def get_switcheo_addresses_trades_count():
+    return str(json.dumps(sort_dicts(collection='addresses',
+                                     key_name='trade_count',
+                                     sort_key='trades')))
+
+
+@app.route('/switcheo/addresses/trades/amount')
+@cross_origin()
+def switcheo_addresses_trades_amount():
+    return get_switcheo_addresses_trades_amount()
+
+
+def get_switcheo_addresses_trades_amount():
+    return str(json.dumps(sort_dicts(collection='addresses',
+                                     key_name='total_amount_traded',
+                                     sort_key='trade_amount')))
+
+
+@app.route('/switcheo/offers/open')
+@cross_origin()
+def switcheo_offers_open():
+    return get_switcheo_offers_open()
+
+
+def get_switcheo_offers_open():
+    offer_list = []
+    for offer in ssc.ni.mongo_db['offer_hash'].find({'status': 'open'}):
+        trade_pair = offer['offer_asset_name'] + "_" + offer['want_asset_name']
+        if trade_pair not in ssc.neo_trade_pair_list:
+            trade_pair = offer['want_asset_name'] + "_" + offer['offer_asset_name']
+            if trade_pair not in ssc.neo_trade_pair_list:
+                exit("Incorrect trade pair - " + trade_pair)
+        offer_dict = {
+            'address': offer['maker_address'],
+            'amount_filled': offer['amount_filled'],
+            'trade_pair': trade_pair,
+            'offer_amount': offer['offer_amount_fixed8'],
+            'offer_asset_name': offer['offer_asset_name'],
+            'want_amount': offer['want_amount_fixed8'],
+            'want_asset_name': offer['want_asset_name']
+        }
+        offer_list.append(offer_dict)
+    return str(json.dumps(offer_list))
+
+
+@app.route('/switcheo/richlist')
+@cross_origin()
+def switcheo_richlist():
+    return get_switcheo_richlist()
+
+
+def get_switcheo_richlist():
+    richlist_dict = {}
+    addresses = ssc.ni.mongo_db['addresses'].find()
+
+    for address in addresses:
+        if 'rich_list' in address:
+            asset_dict = {
+                'address': address['_id'],
+                'balance': address['rich_list']
+            }
+            if 'SWTH' not in richlist_dict:
+                richlist_dict['SWTH'] = []
+            richlist_dict['SWTH'].append(asset_dict)
+
+    for asset in richlist_dict.keys():
+        richlist_dict[asset] = sorted(richlist_dict[asset], key=lambda coin: coin['balance']['total'], reverse=True)
+
+    return richlist_dict
 
 
 @app.route('/<path:path>')
