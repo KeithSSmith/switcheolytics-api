@@ -374,21 +374,22 @@ def switcheo_offers_open():
 def get_switcheo_offers_open():
     offer_list = []
     for offer in ssc.ni.mongo_db['offer_hash'].find({'status': 'open'}):
-        trade_pair = offer['offer_asset_name'] + "_" + offer['want_asset_name']
-        if trade_pair not in ssc.neo_trade_pair_list:
-            trade_pair = offer['want_asset_name'] + "_" + offer['offer_asset_name']
+        if offer['_id'] is not None:
+            trade_pair = offer['offer_asset_name'] + "_" + offer['want_asset_name']
             if trade_pair not in ssc.neo_trade_pair_list:
-                exit("Incorrect trade pair - " + trade_pair)
-        offer_dict = {
-            'address': offer['maker_address'],
-            'amount_filled': offer['amount_filled'],
-            'trade_pair': trade_pair,
-            'offer_amount': offer['offer_amount_fixed8'],
-            'offer_asset_name': offer['offer_asset_name'],
-            'want_amount': offer['want_amount_fixed8'],
-            'want_asset_name': offer['want_asset_name']
-        }
-        offer_list.append(offer_dict)
+                trade_pair = offer['want_asset_name'] + "_" + offer['offer_asset_name']
+                if trade_pair not in ssc.neo_trade_pair_list:
+                    exit("Incorrect trade pair - " + trade_pair)
+            offer_dict = {
+                'address': offer['maker_address'],
+                'amount_filled': offer['amount_filled'],
+                'trade_pair': trade_pair,
+                'offer_amount': offer['offer_amount_fixed8'],
+                'offer_asset_name': offer['offer_asset_name'],
+                'want_amount': offer['want_amount_fixed8'],
+                'want_asset_name': offer['want_asset_name']
+            }
+            offer_list.append(offer_dict)
     return str(json.dumps(offer_list))
 
 
