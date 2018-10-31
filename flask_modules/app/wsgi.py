@@ -415,7 +415,7 @@ def get_switcheo_richlist():
     for asset in richlist_dict.keys():
         richlist_dict[asset] = sorted(richlist_dict[asset], key=lambda coin: coin['balance']['total'], reverse=True)
 
-    return richlist_dict
+    return str(json.dumps(richlist_dict))
 
 
 @app.route('/<path:path>')
