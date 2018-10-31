@@ -406,14 +406,16 @@ def get_switcheo_richlist():
         if 'rich_list' in address:
             asset_dict = {
                 'address': address['_id'],
-                'balance': address['rich_list']
+                'smart_contract': address['rich_list']['smart_contract'],
+                'on_chain': address['rich_list']['on_chain'],
+                'total': address['rich_list']['total']
             }
             if 'SWTH' not in richlist_dict:
                 richlist_dict['SWTH'] = []
             richlist_dict['SWTH'].append(asset_dict)
 
     for asset in richlist_dict.keys():
-        richlist_dict[asset] = sorted(richlist_dict[asset], key=lambda coin: coin['balance']['total'], reverse=True)
+        richlist_dict[asset] = sorted(richlist_dict[asset], key=lambda coin: coin['total'], reverse=True)
 
     return str(json.dumps(richlist_dict))
 
