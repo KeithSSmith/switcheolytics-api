@@ -3,6 +3,7 @@ import json
 import time
 import datetime
 import os
+import requests
 from datetime import timezone
 from flask import Flask, jsonify, make_response, send_from_directory, request
 from flask_cors import CORS, cross_origin
@@ -85,11 +86,19 @@ def switcheo_balance():
 
 
 def get_switcheo_balance(network, address):
-    sc = SwitcheoClient(api_url=url_dict[network])
+    sc = SwitcheoClient(switcheo_network=network)
     if address is None:
         return send_from_directory('dist', 'index.html')
     else:
         return str(json.dumps(sc.balance_by_contract(address)))
+
+
+def get_neoscan_balance(address):
+    url = 'https://api.neoscan.io/api/main_net/v1/get_balance/' + address
+    params = None
+    r = requests.get(url=url, params=params, timeout=30)
+    r.raise_for_status()
+    return r.json()
 
 
 @app.route('/switcheo/status')
@@ -204,6 +213,14 @@ def get_switcheo_fee_amount():
             fee_asset_dict[fee_asset['_id']['fee_asset_name']] = fee_asset['total_fees']
 
         fees_dict[key] = fee_asset_dict
+        fees_dict['v1'] = 646747
+        null_burned = get_neoscan_balance(address='AFmseVrdL9f9oyCzZefL9tG6UbvhPbdYzM')
+        switcheo_burned = 0
+        for balance in null_burned['balance']:
+            asset = balance['asset']
+            if asset == 'Switcheo':
+                switcheo_burned += balance['amount']
+        fees_dict['burn_address'] = switcheo_burned
 
     return str(json.dumps(fees_dict))
 
