@@ -4,3 +4,5 @@
 flask_modules/app/__pycache__/
 
 flask_modules/logger/__pycache__/
+
+node_modules

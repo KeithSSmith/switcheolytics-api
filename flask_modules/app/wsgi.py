@@ -3,6 +3,7 @@ import json
 import time
 import datetime
 import os
+import requests
 from datetime import timezone
 from flask import Flask, jsonify, make_response, send_from_directory, request
 from flask_cors import CORS, cross_origin
@@ -85,11 +86,19 @@ def switcheo_balance():
 
 
 def get_switcheo_balance(network, address):
-    sc = SwitcheoClient(api_url=url_dict[network])
+    sc = SwitcheoClient(switcheo_network=network)
     if address is None:
         return send_from_directory('dist', 'index.html')
     else:
         return str(json.dumps(sc.balance_by_contract(address)))
+
+
+def get_neoscan_balance(address):
+    url = 'https://api.neoscan.io/api/main_net/v1/get_balance/' + address
+    params = None
+    r = requests.get(url=url, params=params, timeout=30)
+    r.raise_for_status()
+    return r.json()
 
 
 @app.route('/switcheo/status')
@@ -204,6 +213,122 @@ def get_switcheo_fee_amount():
             fee_asset_dict[fee_asset['_id']['fee_asset_name']] = fee_asset['total_fees']
 
         fees_dict[key] = fee_asset_dict
+
+    return str(json.dumps(fees_dict))
+
+
+@app.route('/switcheo/burnt')
+@cross_origin()
+def switcheo_burnt():
+    return get_switcheo_burnt()
+
+
+def get_switcheo_burnt():
+    switcheo_burned = 0
+    fees_dict = {}
+    fees_dict['V1'] = 646747 * 100000000
+    switcheo_burned += fees_dict['V1']
+    null_burned = get_neoscan_balance(address='AFmseVrdL9f9oyCzZefL9tG6UbvhPbdYzM')
+    switcheo_burn_address_amount = 0
+    for balance in null_burned['balance']:
+        asset = balance['asset']
+        asset_symbol = balance['asset_symbol']
+        if asset == 'Switcheo' and asset_symbol == 'SWTH':
+            switcheo_burn_address_amount += int(balance['amount'] * 100000000)
+    fees_dict['burn_address'] = switcheo_burn_address_amount
+    switcheo_burned += fees_dict['burn_address']
+
+    time_dict = {}
+    now_epoch = int(time.time())
+    day_epoch = int((datetime.datetime.now() + datetime.timedelta(-1)).replace(tzinfo=timezone.utc).timestamp())
+    time_dict['day_epoch'] = day_epoch
+    week_epoch = int((datetime.datetime.now() + datetime.timedelta(-7)).replace(tzinfo=timezone.utc).timestamp())
+    time_dict['week_epoch'] = week_epoch
+    thirty_epoch = int((datetime.datetime.now() + datetime.timedelta(-30)).replace(tzinfo=timezone.utc).timestamp())
+    time_dict['thirty_epoch'] = thirty_epoch
+    sixty_epoch = int((datetime.datetime.now() + datetime.timedelta(-60)).replace(tzinfo=timezone.utc).timestamp())
+    time_dict['sixty_epoch'] = sixty_epoch
+    ninety_epoch = int((datetime.datetime.now() + datetime.timedelta(-90)).replace(tzinfo=timezone.utc).timestamp())
+    time_dict['ninety_epoch'] = ninety_epoch
+    all_epoch = int(datetime.datetime(2018, 1, 1).replace(tzinfo=timezone.utc).timestamp())
+    time_dict['all_epoch'] = all_epoch
+
+    fees_dict['V2'] = {}
+    fees_dict['V3'] = {}
+    for key in time_dict:
+        for fee_aggregate in ssc.ni.mongo_db['fees'].aggregate([
+            {
+                '$match': {
+                    '$and': [
+                        {'contract_hash_version': 'V2'},
+                        {'fee_asset_name': 'SWTH'},
+                        {'fee_amount': {'$ne': None}},
+                        {'block_time': {'$gte': time_dict[key], '$lte': now_epoch}}
+                    ]
+                }
+            }, {
+                '$group': {
+                    '_id': {'fee_asset_name': '$fee_asset_name'},
+                    'total_fees': {
+                        '$sum': '$fee_amount'
+                    }
+                }
+            }
+        ]):
+            fees_dict['V2'][key] = fee_aggregate['total_fees']
+            if key == 'all_epoch':
+                switcheo_burned += fee_aggregate['total_fees']
+
+        for fee_aggregate in ssc.ni.mongo_db['fees'].aggregate([
+            {
+                '$match': {
+                    '$and': [
+                        {'contract_hash_version': 'V3'},
+                        {'taker_fee_burn': True},
+                        {'taker_fee_asset_name': 'SWTH'},
+                        {'taker_fee_burn_amount': {'$ne': None}},
+                        {'block_time': {'$gte': time_dict[key], '$lte': now_epoch}}
+                    ]
+                }
+            }, {
+                '$group': {
+                    '_id': {'taker_fee_asset_name': '$taker_fee_asset_name'},
+                    'total_fees': {
+                        '$sum': '$taker_fee_burn_amount'
+                    }
+                }
+            }
+        ]):
+            fees_dict['V3'][key] = fee_aggregate['total_fees']
+            if key == 'all_epoch':
+                switcheo_burned += fee_aggregate['total_fees']
+
+    day_amount = 0
+    week_amount = 0
+    thirty_amount = 0
+    sixty_amount = 0
+    ninety_amount = 0
+    for fee_key in fees_dict:
+        if fee_key in ['V2', 'V3']:
+            for fee_duration in fees_dict[fee_key]:
+                if fee_duration == 'day_epoch':
+                    day_amount += fees_dict[fee_key]['day_epoch']
+                if fee_duration == 'week_epoch':
+                    week_amount += fees_dict[fee_key]['week_epoch']
+                if fee_duration == 'thirty_epoch':
+                    thirty_amount += fees_dict[fee_key]['thirty_epoch']
+                if fee_duration == 'sixty_epoch':
+                    sixty_amount += fees_dict[fee_key]['sixty_epoch']
+                if fee_duration == 'ninety_epoch':
+                    ninety_amount += fees_dict[fee_key]['ninety_epoch']
+
+    fees_dict['all_burnt'] = {}
+    fees_dict['all_burnt']['day_epoch'] = day_amount
+    fees_dict['all_burnt']['week_epoch'] = week_amount
+    fees_dict['all_burnt']['thirty_epoch'] = thirty_amount
+    fees_dict['all_burnt']['sixty_epoch'] = sixty_amount
+    fees_dict['all_burnt']['ninety_epoch'] = ninety_amount
+    fees_dict['all_burnt']['all_epoch'] = switcheo_burned
 
     return str(json.dumps(fees_dict))
 

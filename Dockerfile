@@ -2,7 +2,7 @@ FROM jfloff/alpine-python:3.6-slim AS build
 ADD . /app
 WORKDIR /app
 
-RUN echo "manylinux1_compatible = True" >> /usr/lib/python3.6/_manylinux.py && \
+RUN echo "manylinux1_compatible = True" >> /usr/local/lib/pyenv/versions/3.6.8/lib/python3.6/site-packages/_manylinux.py && \
     apk add --no-cache --update build-base python3-dev musl-dev libffi-dev openssl-dev && \
     python -m pip install --upgrade pip wheel cryptography && \
     python -m pip install -r requirements.txt && \
@@ -18,7 +18,7 @@ COPY --from=build /app/flask_modules ./
 COPY --from=build /root/blockchain-etl-wheel /root/blockchain-etl-wheel
 COPY --from=build /root/flask-wheel /root/flask-wheel
 COPY --from=build /root/flask-cors-wheel /root/flask-cors-wheel
-COPY --from=build /usr/lib/python3.6/_manylinux.py /usr/lib/python3.6/_manylinux.py
+COPY --from=build /usr/local/lib/pyenv/versions/3.6.8/lib/python3.6/site-packages/_manylinux.py /usr/local/lib/pyenv/versions/3.6.8/lib/python3.6/site-packages/_manylinux.py
 RUN apk add --no-cache --update openssl-dev && \
     python -m pip install --no-index --find-links=/root/blockchain-etl-wheel blockchain-etl && \
     python -m pip install --no-index --find-links=/root/flask-wheel flask && \
