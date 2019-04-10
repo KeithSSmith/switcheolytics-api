@@ -392,14 +392,20 @@ def switcheo_fee_amount_graph():
 
 def get_switcheo_fee_amount_graph():
     fees_dict = {}
+    fees_v3_dict = {}
 
     for fee_asset_name in ssc.ni.mongo_db['fees'].distinct("fee_asset_name"):
         fees_dict[fee_asset_name] = []
+
+    for fee_asset_name in ssc.ni.mongo_db['fees'].distinct("taker_fee_asset_name"):
+        fees_dict[fee_asset_name] = []
+        fees_v3_dict[fee_asset_name] = []
 
     for fee_asset in ssc.ni.mongo_db['fees'].aggregate([
         {
             '$match': {
                 '$and': [
+                    {'contract_hash_version': 'V2'},
                     {'fee_amount': {'$ne': None}},
                 ]
             }
@@ -420,6 +426,54 @@ def get_switcheo_fee_amount_graph():
             'fee_amount': fee_asset['total_fee_amount'] / 100000000
         }
         fees_dict[fee_asset['_id']['fee_asset_name']].append(fee_asset_dict)
+
+    for fee_asset in ssc.ni.mongo_db['fees'].aggregate([
+        {
+            '$match': {
+                '$and': [
+                    {'contract_hash_version': 'V3'},
+                    {'taker_fee_burn_amount': {'$ne': None}},
+                ]
+            }
+        }, {
+            '$group': {
+                '_id': {
+                    'taker_fee_asset_name': '$taker_fee_asset_name',
+                    'block_date': '$block_date'
+                },
+                'total_fee_amount': {
+                    '$sum': '$taker_fee_burn_amount'
+                }
+            }
+        }
+    ]):
+        fee_asset_dict = {
+            'block_date': fee_asset['_id']['block_date'],
+            'fee_amount': fee_asset['total_fee_amount'] / 100000000
+        }
+        fees_v3_dict[fee_asset['_id']['taker_fee_asset_name']].append(fee_asset_dict)
+
+    for asset in fees_v3_dict:
+        for block_date in fees_v3_dict[asset]:
+            date_check = block_date['block_date']
+            fee_for_date = block_date['fee_amount']
+            i = 0
+            date_match = False
+            date_match_location = 0
+            for fees_date in fees_dict[asset]:
+                check_date = fees_date['block_date']
+                if date_check == check_date:
+                    date_match = True
+                    date_match_location = i
+                i += 1
+            if date_match:
+                fees_dict[asset][date_match_location]['fee_amount'] = fees_dict[asset][date_match_location]['fee_amount'] + fee_for_date
+            else:
+                fee_asset_dict = {
+                    'block_date': date_check,
+                    'fee_amount': fee_for_date
+                }
+                fees_dict[asset].append(fee_asset_dict)
 
     for key in fees_dict.keys():
         fees_dict[key] = sorted(fees_dict[key], key=lambda coin: coin['block_date'])
