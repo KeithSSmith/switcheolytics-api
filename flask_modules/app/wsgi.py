@@ -401,6 +401,30 @@ def get_switcheo_fee_amount_graph():
         fees_dict[fee_asset_name] = []
         fees_v3_dict[fee_asset_name] = []
 
+    fee_asset_dict = {
+        'block_date': '2018-07-24',
+        'fee_amount': 646747
+    }
+    fees_dict['SWTH'].append(fee_asset_dict)
+
+    fee_asset_dict = {
+        'block_date': '2018-09-28',
+        'fee_amount': 414061
+    }
+    fees_dict['SWTH'].append(fee_asset_dict)
+
+    fee_asset_dict = {
+        'block_date': '2019-01-01',
+        'fee_amount': 161052
+    }
+    fees_dict['SWTH'].append(fee_asset_dict)
+
+    fee_asset_dict = {
+        'block_date': '2019-04-01',
+        'fee_amount': 293815
+    }
+    fees_dict['SWTH'].append(fee_asset_dict)
+
     for fee_asset in ssc.ni.mongo_db['fees'].aggregate([
         {
             '$match': {
