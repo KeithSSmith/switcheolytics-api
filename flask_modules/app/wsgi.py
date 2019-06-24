@@ -475,11 +475,6 @@ def get_switcheo_fee_amount_graph():
                 }
                 fees_dict[asset].append(fee_asset_dict)
 
-    for key in fees_dict.keys():
-        fees_dict[key] = sorted(fees_dict[key], key=lambda coin: coin['block_date'])
-        # if key is not None:
-        #     fees_dict[key].sort(key=lambda coin: coin['block_date'])
-
     fee_asset_dict = {
         'block_date': '2018-07-24',
         'fee_amount': 646747
@@ -497,6 +492,11 @@ def get_switcheo_fee_amount_graph():
         'fee_amount': 293815
     }
     fees_dict['SWTH'].append(fee_asset_dict)
+
+    for key in fees_dict.keys():
+        fees_dict[key] = sorted(fees_dict[key], key=lambda coin: coin['block_date'])
+        # if key is not None:
+        #     fees_dict[key].sort(key=lambda coin: coin['block_date'])
 
     return str(json.dumps(fees_dict))
 
