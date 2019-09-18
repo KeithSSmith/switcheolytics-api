@@ -18,7 +18,7 @@ COPY --from=build /app/flask_modules ./
 COPY --from=build /root/blockchain-etl-wheel /root/blockchain-etl-wheel
 COPY --from=build /root/flask-wheel /root/flask-wheel
 COPY --from=build /root/flask-cors-wheel /root/flask-cors-wheel
-COPY --from=build /usr/local/lib/pyenv/versions/3.6.9/lib/python3.6/site-packages/_manylinux.py /usr/local/lib/pyenv/versions/3.6.8/lib/python3.6/site-packages/_manylinux.py
+COPY --from=build /usr/local/lib/pyenv/versions/3.6.9/lib/python3.6/site-packages/_manylinux.py /usr/local/lib/pyenv/versions/3.6.9/lib/python3.6/site-packages/_manylinux.py
 RUN apk add --no-cache --update openssl-dev && \
     python -m pip install --no-index --find-links=/root/blockchain-etl-wheel blockchain-etl && \
     python -m pip install --no-index --find-links=/root/flask-wheel flask && \
